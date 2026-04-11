@@ -53,6 +53,8 @@ NFA Thompson::buildRec(Node* node) {
         State* newEnd = newState();
         newStart->transitions['$'].push_back(nfa.start);
         newStart->transitions['$'].push_back(newEnd);
+        nfa.end->transitions['$'].push_back(newEnd);
+
         return {newStart, newEnd};
     }
     return {};
