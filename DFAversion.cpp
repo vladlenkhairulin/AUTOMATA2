@@ -1,6 +1,6 @@
-#include "DFA.h"
+#include "DFAversion.h"
 
-std::set<State*> epsilonClosure(const std::set<State*>& nfaStates) {
+std::set<State*> DFAversion::epsilonClosure(const std::set<State*>& nfaStates) {
     std::set<State*> closure = nfaStates;
     std::stack<State*> st;
     for (State* s: nfaStates) {
@@ -23,7 +23,7 @@ std::set<State*> epsilonClosure(const std::set<State*>& nfaStates) {
     return closure;
 }
 
-std::set<State*> move(const std::set<State*>& states, char symbol) {
+std::set<State*> DFAversion::move(const std::set<State*>& states, char symbol) {
     std::set<State*> res;
     for (State* s: states) {
         if (s->transitions.count(symbol)) {
@@ -31,11 +31,16 @@ std::set<State*> move(const std::set<State*>& states, char symbol) {
                 res.insert(target);
             }
         }
+        if (s->transitions.count('.')) {
+            for (auto target : s->transitions.at('.')) {
+                res.insert(target);
+            }
+        }
     }
     return res;
 }
 
-std::set<char> getAlphabet(NFA& nfa) {
+std::set<char> DFAversion::getAlphabet(NFA& nfa) {
     std::set<char> alphabet;
     std::stack<State*> st;
     std::set<State*> visited;
@@ -54,7 +59,7 @@ std::set<char> getAlphabet(NFA& nfa) {
     return alphabet;
 }
 
-DFA convert(NFA nfa) {
+DFA DFAversion::convert(NFA nfa) {
     DFA dfa;
     int idCounter = 0;
     std::map<std::set<State*>, DFAState*> map;
@@ -72,20 +77,20 @@ DFA convert(NFA nfa) {
     dfa.states.push_back(startState);
     map[startClosure] = startState;
     q.push(startClosure);
-
+    std::set<char> alphabet = getAlphabet(nfa);
 
     while (!q.empty()) {
         std::set<State*> curSet = q.front();
         q.pop();
         DFAState* curDFA = map[curSet];
-        std::set<char> alphabet = getAlphabet(nfa);
+
         for (char c : alphabet) {
             std::set<State*> moved = move(curSet, c);
             if (moved.empty()) continue;
             std::set<State*> closure = epsilonClosure(moved);
             if (!map.count(closure)) {
                 DFAState* newState = new DFAState{};
-                newState->id = idCount++;
+                newState->id = idCounter++;
                 newState->nfaStates = closure;
 
                 map[closure] = newState;

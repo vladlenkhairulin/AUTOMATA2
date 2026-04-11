@@ -12,7 +12,8 @@ enum class TokenType
     OPTION,
     DOT,
     LPAR,
-    RPAR
+    RPAR,
+    REPEAT
 };
 
 struct Token

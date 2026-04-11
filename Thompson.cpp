@@ -21,6 +21,14 @@ NFA Thompson::buildRec(Node* node) {
         s1->transitions[node->token.value[0]].push_back(s2);
         return {s1, s2};
     }
+
+    if (node->token.type == TokenType::DOT) {
+        State* s1 = newState();
+        State* s2 = newState();
+        s1->transitions['.'].push_back(s2);
+        return {s1, s2};
+    }
+
     if (node->token.type == TokenType::OR) {
         NFA l = buildRec(node->left);
         NFA r = buildRec(node->right);

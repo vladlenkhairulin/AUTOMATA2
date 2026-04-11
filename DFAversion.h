@@ -20,5 +20,11 @@ struct DFA {
     std::vector<DFAState*> states;
 };
 
-
+class DFAversion {
+public:
+    std::set<State*> epsilonClosure(const std::set<State*>& nfaStates);
+    std::set<State*> move(const std::set<State*>& states, char symbol);
+    std::set<char> getAlphabet(NFA& nfa);
+    DFA convert(NFA nfa);
+};
 #endif //AUTOMATA2_DFA_H

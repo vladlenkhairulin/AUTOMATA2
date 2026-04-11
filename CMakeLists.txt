@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.0)
+cmake_minimum_required(VERSION 3.0)
 project(AUTOMATA2)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(AUTOMATA2
         main.cpp
+        DFA.cpp
         Dialogue.cpp
         RegexParser.cpp
         SyntaxTree.cpp
