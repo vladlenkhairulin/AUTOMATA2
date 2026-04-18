@@ -52,7 +52,7 @@ std::set<char> DFAversion::getAlphabet(NFA& nfa) {
         if (visited.count(s)) continue;
         visited.insert(s);
         for (auto& next : s->transitions) {
-            if (next.first != '$') alphabet.insert(next.first);
+            if (next.first != '$' && next.first != '.') alphabet.insert(next.first);
             for (auto t : next.second) st.push(t);
         }
     }

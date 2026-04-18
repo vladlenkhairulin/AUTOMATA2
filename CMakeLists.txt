@@ -6,11 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(AUTOMATA2
         main.cpp
-        DFA.cpp
-        Dialogue.cpp
+        DFAversion.cpp
         RegexParser.cpp
         SyntaxTree.cpp
-        NFA.cpp
         Thompson.cpp
 )
 
