@@ -1,9 +1,22 @@
 #include "Thompson.h"
 
+#include <stdexcept>
+
 State* Thompson::newState() {
     State* state = new State();
     state->id = counter++;
     return state;
+}
+
+NFA Thompson::buildStar(Node* node) {
+    NFA sub = buildRec(node);
+    State* newStart = newState();
+    State* newEnd = newState();
+    newStart->transitions['$'].push_back(newEnd);
+    newStart->transitions['$'].push_back(sub.start);
+    sub.end->transitions['$'].push_back(newEnd);
+    sub.end->transitions['$'].push_back(sub.start);
+    return {newStart, newEnd};
 }
 
 NFA Thompson::build(const std::string& regex) {
@@ -65,9 +78,59 @@ NFA Thompson::buildRec(Node* node) {
 
         return {newStart, newEnd};
     }
+    if (node->token.type == TokenType::REPEAT) {
+        std::string v = node->token.value;
+        size_t commaPos = v.find(',');
+        int minRep = 0;
+        int maxRep = -1;
+        if (commaPos == std::string::npos) {
+            minRep = maxRep = std::stoi(v);
+        }
+        else {
+            std::string left = v.substr(0, commaPos);
+            std::string right = v.substr(commaPos + 1);
+            minRep = left.empty()? 0 : std::stoi(left);
+            maxRep = right.empty()? -1 : std::stoi(right);
+        }
+        if (maxRep != -1 && maxRep < minRep) {
+            throw std::invalid_argument("Invalid repeat range");
+
+        }
+        NFA res;
+        if (minRep == 0) {
+            State* s1 = newState();
+            State* s2 = newState();
+            s1->transitions['$'].push_back(s2);
+            res = {s1,s2};
+        }
+        else {
+            res = buildRec(node->left);
+            for (int i = 1; i < minRep; i++) {
+                NFA nextCopy = buildRec(node->left);
+                res.end->transitions['$'].push_back(nextCopy.start);
+                res.end = nextCopy.end;
+            }
+        }
+        if (maxRep == -1) {
+            NFA star = buildStar(node->left);
+            res.end->transitions['$'].push_back(star.start);
+            res.end = star.end;
+        }
+        else if (maxRep > minRep) {
+            int dif = maxRep - minRep;
+            for (int i = 0; i<dif; i++) {
+                NFA opt = buildRec(node->left);
+                State* skipEnd = newState();
+                res.end->transitions['$'].push_back(opt.start);
+                opt.end->transitions['$'].push_back(skipEnd);
+                res.end->transitions['$'].push_back(skipEnd);
+                res.end = skipEnd;
+            }
+        }
+        return res;
+    }
     return {};
 }
-
 
 
 

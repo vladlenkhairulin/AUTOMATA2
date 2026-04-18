@@ -43,15 +43,16 @@ std::vector<Token> RegexParser::tokenize(const std::string& regex) {
                 std::string num1, num2;
                 i++;
                 while (i < regex.size() && std::isdigit(regex[i])) {
-                    num1.push_back(regex[i]);
+                    num1 += regex[i];
                     i++;
                 }
-                if (i >= regex.size() || regex[i] != ',') {
-                    throw std::runtime_error("Invalid repeat: missing comma");
+                bool hasComma = false;
+                if (i < regex.size() && regex[i] == ',') {
+                    hasComma = true;
+                    i++;
                 }
-                i++;
                 while (i < regex.size() && std::isdigit(regex[i])) {
-                    num2.push_back(regex[i]);
+                    num2 += regex[i];
                     i++;
                 }
                 if (i >= regex.size() || regex[i] != '}') {
@@ -59,8 +60,17 @@ std::vector<Token> RegexParser::tokenize(const std::string& regex) {
                 }
                 i++;
 
-                Token t(TokenType::REPEAT);
-                t.value = num1 + "," + num2;
+                std::string value;
+                if (!hasComma) {
+                    if (num1.empty()) {
+                        throw std::runtime_error("Invalid repeat: empty {}");
+                    }
+                    value = num1 + "," + num1;
+                }
+                else {
+                    value = num1 + "," + num2;
+                }
+                Token t(TokenType::REPEAT, value);
                 tokens.push_back(t);
                 continue;
             }
@@ -84,7 +94,7 @@ void RegexParser::addConcat(std::vector<Token>& tokens) {
             TokenType t2 = tokens[i+1].type;
             bool needConcat = false;
             if ((t1 == TokenType::SYMBOL || t1 == TokenType::RPAR || t1 == TokenType::DOT || t1==TokenType::PLUS || t1==TokenType::OPTION || t1 == TokenType::REPEAT)
-                && (t2==TokenType::SYMBOL || t2==TokenType::LPAR || t2 == TokenType::DOT || t2 == TokenType::REPEAT)) needConcat = true;
+                && (t2==TokenType::SYMBOL || t2==TokenType::LPAR || t2 == TokenType::DOT)) needConcat = true;
             if (needConcat) {
                 res.emplace_back(TokenType::CONCAT);
             }
@@ -109,7 +119,7 @@ std::vector<Token> RegexParser::parse(const std::string& regex) {
     std::stack<Token> operations;
 
     for (const auto& token: tokens) {
-        if (token.type == TokenType::SYMBOL || token.type == TokenType::DOT || token.type == TokenType::REPEAT) res.push_back(token);
+        if (token.type == TokenType::SYMBOL || token.type == TokenType::DOT) res.push_back(token);
         else if (token.type == TokenType::LPAR) operations.push(token);
         else if (token.type == TokenType::RPAR) {
             while (!operations.empty() && operations.top().type != TokenType::LPAR) {

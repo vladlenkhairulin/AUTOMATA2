@@ -5,6 +5,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <string>
 #include <stack>
 #include <queue>
 
@@ -21,10 +22,14 @@ struct DFA {
 };
 
 class DFAversion {
+private:
+    std::set<char> getAlphabet(NFA& nfa);
+    std::set<char> getAlphabetDFA(const DFA& dfa);
 public:
     std::set<State*> epsilonClosure(const std::set<State*>& nfaStates);
     std::set<State*> move(const std::set<State*>& states, char symbol);
-    std::set<char> getAlphabet(NFA& nfa);
     DFA convert(NFA nfa);
+    DFA minimize(const DFA& dfa);
+    DFA compile(const std::string& regex);
 };
 #endif //AUTOMATA2_DFA_H

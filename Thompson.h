@@ -9,6 +9,7 @@ private:
     NFA buildRec(Node* node);
     State* newState();
     int counter = 0;
+    NFA buildStar(Node* node);
 public:
     NFA build(const std::string& regex);
 };
