@@ -218,3 +218,66 @@ DFA DFAversion::compile(const std::string& regex) {
     DFA minDFA = minimize(rawDFA);
     return minDFA;
 }
+
+// Добавление в DFAversion.cpp
+
+DFA DFAversion::complement(const DFA &oldDFA) {
+    if (oldDFA.states.empty()) return {};
+    std::set<char> alphabet = getAlphabetDFA(oldDFA);
+    DFA fullDFA = oldDFA;
+    DFAState* trap = nullptr;
+    for (DFAState* s : fullDFA.states) {
+        for (char c : alphabet) {
+            if (s->transitions.find(c) == s->transitions.end() || s->transitions[c] == nullptr) {
+                if (!trap) {
+                    trap = new DFAState();
+                    trap->id = -1;
+                    trap->isFinal = false;
+                    for (char c : alphabet) trap->transitions[c] = trap;
+                }
+                s->transitions[c] = trap;
+            }
+        }
+    }
+    if (trap) fullDFA.states.push_back(trap);
+    for (DFAState* s : fullDFA.states) {
+        s->isFinal = !s->isFinal;
+    }
+    return minimize(fullDFA);
+}
+
+
+DFA DFAversion::reverse(const DFA& oldDFA) {
+    if (oldDFA.states.empty()) return {};
+    std::map<DFAState*, State*> mapping;
+    std::vector<State*> nfaStates;
+    for (DFAState* ds : oldDFA.states) {
+        State* ns = new State();
+        ns->id = ds->id;
+        mapping[ds] = ns;
+        nfaStates.push_back(ns);
+    }
+    for (DFAState* src : oldDFA.states) {
+        for (auto const& pair : src->transitions) {
+            if (pair.second) {
+                mapping[pair.second]->transitions[pair.first].push_back(mapping[src]);
+
+            }
+        }
+    }
+    State* newStart = new State();
+    newStart->id = -1;
+    for (DFAState* ds : dfa.states) {
+        if (ds->isFinal) {
+            newStart->transitions['$'].push_back(mapping[ds]);
+        }
+    }
+    NFA nfa;
+    nfa.start = newStart;
+    State* newEnd = new State();
+    newEnd->id = -2;
+    mapping[dfa.start]->transitions['$'].push_back(newEnd);
+    nfa.end  = newEnd;
+    DFA inversion = convert(nfa);
+    return minimize(inversion);
+}

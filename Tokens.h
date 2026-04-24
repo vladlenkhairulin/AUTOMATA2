@@ -13,7 +13,9 @@ enum class TokenType
     DOT,
     LPAR,
     RPAR,
-    REPEAT
+    REPEAT,
+    GRP,
+    GRPREF
 };
 
 struct Token

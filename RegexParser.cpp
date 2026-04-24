@@ -72,7 +72,21 @@ std::vector<Token> RegexParser::tokenize(const std::string& regex) {
                 }
                 Token t(TokenType::REPEAT, value);
                 tokens.push_back(t);
-                continue;
+                break;
+            }
+            case '<': {
+                std::string name;
+                i++;
+                while (i<regex.size() && regex[i] != '>') {
+                    name += regex[i];
+                    i++;
+                }
+                if (!tokens.empty() && tokens.back().type == TokenType::LPAR) {
+                    tokens.pop_back();
+                    tokens.emplace_back(TokenType::GRP, name);
+                }
+                else tokens.emplace_back(TokenType::GRPREF, name);
+                break;
             }
             default:
                 if (std::isprint(static_cast<unsigned char>(c))) {
@@ -92,15 +106,14 @@ void RegexParser::addConcat(std::vector<Token>& tokens) {
         if (i+1 < tokens.size()) {
             TokenType t1 = tokens[i].type;
             TokenType t2 = tokens[i+1].type;
-            bool needConcat = false;
-            if ((t1 == TokenType::SYMBOL || t1 == TokenType::RPAR || t1 == TokenType::DOT || t1==TokenType::PLUS || t1==TokenType::OPTION || t1 == TokenType::REPEAT)
-                && (t2==TokenType::SYMBOL || t2==TokenType::LPAR || t2 == TokenType::DOT)) needConcat = true;
-            if (needConcat) {
-                res.emplace_back(TokenType::CONCAT);
+            if ( (t1 == TokenType::SYMBOL || t1 == TokenType::RPAR || t1 == TokenType::DOT || t1==TokenType::PLUS
+                || t1==TokenType::OPTION || t1 == TokenType::REPEAT || t1 == TokenType::GRPREF)
+                && (t2==TokenType::SYMBOL || t2==TokenType::LPAR || t2 == TokenType::DOT
+                || t2 == TokenType::GRP || t2 == TokenType::GRPREF) ) {
+                    res.emplace_back(TokenType::CONCAT);
+                }
             }
-
         }
-    }
     tokens = res;
 }
 

@@ -31,5 +31,7 @@ public:
     DFA convert(NFA nfa);
     DFA minimize(const DFA& dfa);
     DFA compile(const std::string& regex);
+    DFA complement(const DFA& oldDFA);
+    DFA reverse(const DFA& oldDFA);
 };
 #endif //AUTOMATA2_DFA_H

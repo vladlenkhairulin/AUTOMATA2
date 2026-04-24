@@ -13,6 +13,7 @@ add_executable(AUTOMATA2
         SyntaxTree.cpp
         Thompson.cpp
         StateElimination.cpp
+        Regex.cpp
 )
 
 target_include_directories(AUTOMATA2 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
