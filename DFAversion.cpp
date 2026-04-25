@@ -41,26 +41,26 @@ std::set<State*> DFAversion::move(const std::set<State*>& states, char symbol) {
     return res;
 }
 
-std::set<char> DFAversion::getAlphabet(NFA& nfa) {
+std::set<char> DFAversion::getAlphabet(const NFA& nfa) {
     std::set<char> alphabet;
-    std::stack<State*> st;
-    std::set<State*> visited;
+    std::stack<const State*> st;
+    std::set<const State*> visited;
     st.push(nfa.start);
 
     while (!st.empty()) {
-        State* s = st.top();
+        const State* s = st.top();
         st.pop();
-        if (visited.count(s)) continue;
+        if (visited.contains(s)) continue;
         visited.insert(s);
-        for (auto& next : s->transitions) {
+        for (const auto& next : s->transitions) {
             if (next.first != '$' && next.first != '.') alphabet.insert(next.first);
-            for (auto t : next.second) st.push(t);
+            for (const State* t : next.second) st.push(t);
         }
     }
     return alphabet;
 }
 
-DFA DFAversion::convert(NFA nfa) {
+DFA DFAversion::convert(const NFA& nfa) {
     DFA dfa;
     int idCounter = 0;
     std::map<std::set<State*>, DFAState*> map;
@@ -267,7 +267,7 @@ DFA DFAversion::reverse(const DFA& oldDFA) {
     }
     State* newStart = new State();
     newStart->id = -1;
-    for (DFAState* ds : dfa.states) {
+    for (DFAState* ds : oldDFA.states) {
         if (ds->isFinal) {
             newStart->transitions['$'].push_back(mapping[ds]);
         }
@@ -276,8 +276,8 @@ DFA DFAversion::reverse(const DFA& oldDFA) {
     nfa.start = newStart;
     State* newEnd = new State();
     newEnd->id = -2;
-    mapping[dfa.start]->transitions['$'].push_back(newEnd);
+    mapping[oldDFA.start]->transitions['$'].push_back(newEnd);
     nfa.end  = newEnd;
-    DFA inversion = convert(nfa);
+    const DFA inversion = convert(nfa);
     return minimize(inversion);
 }

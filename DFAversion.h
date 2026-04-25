@@ -23,12 +23,12 @@ struct DFA {
 
 class DFAversion {
 private:
-    std::set<char> getAlphabet(NFA& nfa);
+    std::set<char> getAlphabet(const NFA& nfa);
     std::set<char> getAlphabetDFA(const DFA& dfa);
 public:
     std::set<State*> epsilonClosure(const std::set<State*>& nfaStates);
     std::set<State*> move(const std::set<State*>& states, char symbol);
-    DFA convert(NFA nfa);
+    DFA convert(const NFA& nfa);
     DFA minimize(const DFA& dfa);
     DFA compile(const std::string& regex);
     DFA complement(const DFA& oldDFA);

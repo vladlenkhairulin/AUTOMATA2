@@ -1,5 +1,7 @@
 #include "StateElimination.h"
 
+#include <memory>
+
 std::string StateElimination::opOr(const std::string &a, const std::string &b) {
     if (a.empty() || a =="$") return b;
     if (b.empty() || b == "$") return a;
@@ -31,12 +33,12 @@ std::string StateElimination::opStar(const std::string &a) {
 std::string StateElimination::toRegex(const DFA& dfa) {
     if (dfa.states.empty()) return "";
     std::map<DFAState*, GNFAState*> transformMap;
-    std::vector<GNFAState*> gnfaStates;
+    std::vector<std::unique_ptr<GNFAState>> gnfaStates;
     for (DFAState* ds: dfa.states) {
-        GNFAState* gs = new GNFAState();
+        auto gs = std::make_unique<GNFAState>();
         gs->id = ds->id;
-        transformMap[ds] = gs;
-        gnfaStates.push_back(gs);
+        transformMap[ds] = gs.get();
+        gnfaStates.push_back(std::move(gs));
     }
     for (DFAState* ds: dfa.states) {
         GNFAState* gs = transformMap[ds];
@@ -47,22 +49,26 @@ std::string StateElimination::toRegex(const DFA& dfa) {
         }
     }
 
-    GNFAState* newStart = new GNFAState();
+    auto newStart = std::make_unique<GNFAState>();
     newStart->id = -1;
-    GNFAState* newEnd = new GNFAState();
+    auto newEnd = std::make_unique<GNFAState>();
     newEnd->id = -2;
-    gnfaStates.push_back(newStart);
-    gnfaStates.push_back(newEnd);
-    newStart->trans[transformMap[dfa.start]] = "$";
+
+    GNFAState* start = newStart.get();
+    GNFAState* end = newEnd.get();
+    gnfaStates.push_back(std::move(newStart));
+    gnfaStates.push_back(std::move(newEnd));
+
+    start->trans[transformMap[dfa.start]] = "$";
     for (DFAState* ds: dfa.states) {
         if (ds->isFinal) {
-            transformMap[ds]->trans[newEnd] = "$";
+            transformMap[ds]->trans[end] = "$";
         }
     }
     std::vector<GNFAState*> toRemove;
-    for (GNFAState* state: gnfaStates) {
-        if (state != newStart && state != newEnd) {
-            toRemove.push_back(state);
+    for (auto& state: gnfaStates) {
+        if (state.get() != start && state.get() != end) {
+            toRemove.push_back(state.get());
         }
     }
 
@@ -71,11 +77,10 @@ std::string StateElimination::toRegex(const DFA& dfa) {
         if (loop.empty()) loop = "$";
         std::vector<std::pair<GNFAState*, std::string>> ins;
         std::vector<std::pair<GNFAState*, std::string>> outs;
-        for (GNFAState* s: gnfaStates) {
-            if (s == state) continue;
-            auto it = s->trans.find(state);
-            if (it != s->trans.end()) {
-                ins.emplace_back(s, it->second);
+        for (auto& s: gnfaStates) {
+            if (s.get() == state) continue;
+            if (s->trans.contains(state)) {
+                ins.emplace_back(s.get(), s->trans[state]);
             }
         }
 
@@ -84,28 +89,22 @@ std::string StateElimination::toRegex(const DFA& dfa) {
                 outs.emplace_back(tr.first, tr.second);
             }
         }
-        for (auto& inPair: ins) {
-            GNFAState* inState = inPair.first;
-            std::string regex1 = inPair.second;
-            for (auto& outPair: outs) {
-                GNFAState* outState = outPair.first;
-                std::string regex2 = outPair.second;
-                std::string newLabel = opConcat(regex1, opConcat(opStar(loop), regex2));
-                auto it = inState->trans.find(outState);
-                if (it != inState->trans.end()) {
-                    inState->trans[outState] = opOr(it->second, newLabel);
+        for (auto& inPair : ins) {
+            for (auto& outPair : outs) {
+                std::string bypass = opConcat(inPair.second, opConcat(opStar(loop), outPair.second));
+                GNFAState* inS = inPair.first;
+                GNFAState* outS = outPair.first;
+                if (inS->trans.contains(outS)) {
+                    inS->trans[outS] = opOr(inS->trans[outS], bypass);
                 }
-                else inState->trans[outState] = newLabel;
+                else {
+                    inS->trans[outS] = bypass;
+                }
             }
         }
-        for (GNFAState* s: gnfaStates) {
+        for (auto& s: gnfaStates) {
             s->trans.erase(state);
         }
     }
-    auto it = newStart->trans.find(newEnd);
-    std::string res;
-    if (it != newStart->trans.end()) res = it->second;
-    else res = "";
-    for (GNFAState* s: gnfaStates) delete s;
-    return res;
+    return start->trans.contains(end) ? start->trans[end] : "";
 }
