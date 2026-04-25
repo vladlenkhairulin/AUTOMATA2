@@ -219,29 +219,40 @@ DFA DFAversion::compile(const std::string& regex) {
     return minDFA;
 }
 
-// Добавление в DFAversion.cpp
 
 DFA DFAversion::complement(const DFA &oldDFA) {
     if (oldDFA.states.empty()) return {};
     std::set<char> alphabet = getAlphabetDFA(oldDFA);
-    DFA fullDFA = oldDFA;
+    DFA fullDFA;
+    std::map<DFAState*, DFAState*> mapping;
+    for (DFAState* oldS : oldDFA.states) {
+        DFAState* newS = new DFAState();
+        newS->id = oldS->id;
+        newS->isFinal = !oldS->isFinal;
+        mapping[oldS] = newS;
+        fullDFA.states.push_back(newS);
+    }
+    fullDFA.start = mapping[oldDFA.start];
     DFAState* trap = nullptr;
-    for (DFAState* s : fullDFA.states) {
+    for (DFAState* oldS : oldDFA.states) {
+        DFAState* newS = mapping[oldS];
         for (char c : alphabet) {
-            if (s->transitions.find(c) == s->transitions.end() || s->transitions[c] == nullptr) {
+            if (oldS->transitions.contains(c)) {
+                newS->transitions[c] = mapping[oldS->transitions.at(c)];
+            }
+            else {
                 if (!trap) {
                     trap = new DFAState();
-                    trap->id = -1;
-                    trap->isFinal = false;
-                    for (char c : alphabet) trap->transitions[c] = trap;
+                    trap->id = -10;
+                    trap->isFinal = true;
+                    for (char alpha : alphabet) {
+                        trap->transitions[alpha] = trap;
+                    }
+                    fullDFA.states.push_back(trap);
                 }
-                s->transitions[c] = trap;
+                newS->transitions[c] = trap;
             }
         }
-    }
-    if (trap) fullDFA.states.push_back(trap);
-    for (DFAState* s : fullDFA.states) {
-        s->isFinal = !s->isFinal;
     }
     return minimize(fullDFA);
 }

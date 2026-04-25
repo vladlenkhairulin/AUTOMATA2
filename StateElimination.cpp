@@ -3,33 +3,26 @@
 #include <memory>
 
 std::string StateElimination::opOr(const std::string &a, const std::string &b) {
-    if (a.empty() || a =="$") return b;
-    if (b.empty() || b == "$") return a;
+    if (a.empty()) return b;
+    if (b.empty()) return a;
     if (a==b) return a;
+    if (a == "$") return b + "?";
+    if (b == "$") return a + "?";
     return "(" + a + "|" + b + ")";
 }
 
-std::string StateElimination::opConcat(const std::string &a, const std::string &b) {
-    if (a.empty() || a == "$") return b;
-    if (b.empty() || b == "$") return a;
-    return a+b;
-}
-
-
 std::string StateElimination::opStar(const std::string &a) {
-    if (a.empty() || a=="$") return "";
-    std::string option;
-    if (a.length() == 1) {
-        option = a + "?";
-    }
-    else {
-        option = "(" + a + ")?";
-    }
-
-    if (option.length() == 2) return option + "+";
-    return "(" + option + ")+";
+    if (a.empty() || a == "$") return "$";
+    if (a.length() == 1) return a + "*";
+    if (a.front() == '(' && a.back() == ')') return a + "*";
+    return "(" + a + ")*";
 }
 
+std::string StateElimination::opConcat(const std::string &a, const std::string &b) {
+    if (a == "$" || a.empty()) return b;
+    if (b == "$" || b.empty()) return a;
+    return a + b;
+}
 std::string StateElimination::toRegex(const DFA& dfa) {
     if (dfa.states.empty()) return "";
     std::map<DFAState*, GNFAState*> transformMap;
@@ -45,7 +38,11 @@ std::string StateElimination::toRegex(const DFA& dfa) {
         for (const auto& t: ds->transitions) {
             std::string label(1, t.first);
             if (t.first == '.') label = ".";
-            gs->trans[transformMap[t.second]] = label;
+            GNFAState* target = transformMap[t.second];
+            if (gs->trans.contains(target)) {
+                gs->trans[target] = opOr(gs->trans[target], label);
+            }
+            else gs->trans[target] = label;
         }
     }
 
