@@ -1,4 +1,4 @@
-#include "SyntaxTree.h"
+#include "../include/SyntaxTree.h"
 #include <stack>
 
 Node* SyntaxTree::build(const std::vector<Token>& postfix) {

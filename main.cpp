@@ -3,12 +3,12 @@
 #include <vector>
 #include <fstream>
 #include <filesystem>
-#include "Regex.h"
-#include "DFAVersion.h"
-#include "StateElimination.h"
-#include "Thompson.h"
-#include "RegexParser.h"
-#include "SyntaxTree.h"
+#include "include/Regex.h"
+#include "include/DFAversion.h"
+#include "include/StateElimination.h"
+#include "include/Thompson.h"
+#include "include/RegexParser.h"
+#include "include/SyntaxTree.h"
 
 int fileCounter = 1;
 
@@ -131,7 +131,7 @@ int main() {
                 if (matches.empty()) std::cout << "No matches found.\n";
                 for (auto& m : matches) {
                     std::cout << "Match: '" << m.value << "'\n";
-                    for (auto const& [name, val] : m.groups)
+                    for (auto const& [name, val] : m)
                         std::cout << "Group <" << name << ">: " << val << "\n";
                 }
                 break;

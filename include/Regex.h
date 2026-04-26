@@ -3,7 +3,7 @@
 #include "Thompson.h"
 #include "Match.h"
 #include "NFA.h"
-#include "DFAVersion.h"
+#include "DFAversion.h"
 
 class Regex {
 private:
