@@ -4,6 +4,11 @@
 bool Regex::findPath(const State* s, const std::string& text, size_t pos, size_t& endPos, Match& m, std::map<std::string, size_t>& starts) {
 
     if (!s->refTag.empty()) {
+        for (const auto& [name, startPos] : starts) {
+            if (!m.groups.contains(name)) {
+                m.groups[name] = text.substr(startPos, pos - startPos);
+            }
+        }
         if (!m.groups.contains(s->refTag)) return false;
         const std::string& inner = m.groups[s->refTag];
         if (pos + inner.size() > text.size()) return false;
