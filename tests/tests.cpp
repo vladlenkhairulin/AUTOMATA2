@@ -8,6 +8,7 @@
 #include "../include/StateElimination.h"
 #include "../include/Match.h"
 #include "../include/NFA.h"
+#include "../include/Tokens.h"
 
 #include <string>
 #include <vector>
@@ -24,22 +25,69 @@ TEST_CASE("RegexParser: tokenize/parse/metacharacters") {
     SECTION("Simple concat and OR precedence") {
         RegexParser p;
         auto pf = p.parse("ab|c");
-        REQUIRE(pf.size() >= 4);
+        REQUIRE(pf.size() == 5);
     }
     SECTION("metacharacters become symbols") {
         RegexParser p;
-        auto pf = p.parse("&|&+&?&.&(&)");
-        REQUIRE_FALSE(pf.empty());
+        auto tokens = p.tokenize("&|&+&?&.&(&)");
+        REQUIRE(tokens.size() == 6);
+        bool hasEscapedOr = false;
+        bool hasEscapedPlus = false;
+        bool hasEscapedQuestion = false;
+        bool hasEscapedDot = false;
+        bool hasEscapedLpar = false;
+        bool hasEscapedRpar = false;
+
+        for (const auto& token : tokens) {
+            if (token.type == TokenType::SYMBOL) {
+                if (token.value == "|") hasEscapedOr = true;
+                if (token.value == "+") hasEscapedPlus = true;
+                if (token.value == "?") hasEscapedQuestion = true;
+                if (token.value == ".") hasEscapedDot = true;
+                if (token.value == "(") hasEscapedLpar = true;
+                if (token.value == ")") hasEscapedRpar = true;
+            }
+        }
+        REQUIRE(hasEscapedOr);
+        REQUIRE(hasEscapedPlus);
+        REQUIRE(hasEscapedQuestion);
+        REQUIRE(hasEscapedDot);
+        REQUIRE(hasEscapedLpar);
+        REQUIRE(hasEscapedRpar);
+
+        for (const auto& token : tokens) {
+            REQUIRE(token.type != TokenType::OR);
+            REQUIRE(token.type != TokenType::PLUS);
+            REQUIRE(token.type != TokenType::OPTION);
+            REQUIRE(token.type != TokenType::DOT);
+            REQUIRE(token.type != TokenType::LPAR);
+            REQUIRE(token.type != TokenType::RPAR);
+        }
     }
     SECTION("Repeat exact") {
         RegexParser p;
-        auto pf = p.parse("a{3}");
+        auto pf = p.parse("x{5}");
         REQUIRE_FALSE(pf.empty());
+        bool hasRepeat = false;
+        for (const auto& token : pf) {
+            if (token.type == TokenType::REPEAT && token.value == "5,5") {
+                hasRepeat = true;
+            }
+        }
+        REQUIRE(hasRepeat);
     }
     SECTION("Repeat range") {
         RegexParser p;
-        auto pf = p.parse("a{2,5}");
+        auto pf = p.parse("digit{2,5}");
         REQUIRE_FALSE(pf.empty());
+
+        bool hasRangeRepeat = false;
+        for (const auto& token : pf) {
+            if (token.type == TokenType::REPEAT && (token.value.find(',') != std::string::npos)) {
+                hasRangeRepeat = true;
+            }
+        }
+        REQUIRE(hasRangeRepeat);
     }
     SECTION("Repeat open upper") {
         RegexParser p;
@@ -48,8 +96,15 @@ TEST_CASE("RegexParser: tokenize/parse/metacharacters") {
     }
     SECTION("Repeat open lower") {
         RegexParser p;
-        auto pf = p.parse("a{,3}");
+        auto pf = p.parse("letter{,7}");
         REQUIRE_FALSE(pf.empty());
+        bool hasOpenLower = false;
+        for (const auto& token : pf) {
+            if (token.type == TokenType::REPEAT && token.value == ",7") {
+                hasOpenLower = true;
+            }
+        }
+        REQUIRE(hasOpenLower);
     }
     SECTION("Invalid repeat throws") {
         RegexParser p;
@@ -161,6 +216,14 @@ TEST_CASE("DFAversion: convert/minimize/compile") {
         auto m = dv.minimize(empty);
         REQUIRE(m.states.empty());
     }
+    SECTION("Minimizing at work") {
+        auto nfa = th.build("(ab|aс)+");
+        auto raw = dv.convert(nfa);
+        auto minimized = dv.minimize(raw);
+        REQUIRE(raw.start != nullptr);
+        REQUIRE(minimized.start != nullptr);
+        REQUIRE(minimized.states.size() <= raw.states.size());
+    }
 }
 
 TEST_CASE("DFAversion: complement language") {
@@ -170,6 +233,10 @@ TEST_CASE("DFAversion: complement language") {
         auto comp = dv.complement(dfa);
         REQUIRE(comp.start != nullptr);
         REQUIRE(comp.states.size() >= 1);
+        size_t originals = finalsCount(dfa);
+        size_t complement_states = comp.states.size();
+        REQUIRE(originals > 0);
+        REQUIRE(complement_states > originals);
     }
     SECTION("Complement empty") {
         DFA empty;
@@ -234,8 +301,14 @@ TEST_CASE("Regex findAll") {
 
     SECTION("Plus operator") {
         Regex re("a+");
-        auto v = re.findAll("b aa aaaa c");
+        auto v = re.findAll("xaaxaxaaax");
         REQUIRE(v.size() >= 2);
+        for (const auto& match : v) {
+            REQUIRE_FALSE(match.empty());
+            for (char ch : match) {
+                REQUIRE(ch == 'a');
+            }
+        }
     }
     SECTION("Dot") {
         Regex re("a.c");
@@ -244,8 +317,10 @@ TEST_CASE("Regex findAll") {
     }
     SECTION("Repeat range") {
         Regex re("a{2,3}");
-        auto v = re.findAll("a aa aaa aaaa");
-        REQUIRE(v.size() >= 2);
+        auto v = re.findAll("aaaa a aaa aa");
+        REQUIRE(v.size() >= 1);
+        REQUIRE(v[0].length() >= 2);
+        REQUIRE(v[0].length() <= 3);
     }
     SECTION("metacharacters") {
         Regex re("&|");
@@ -271,7 +346,7 @@ TEST_CASE("Match object: iterator and index operator") {
     SECTION("Numeric index") {
         REQUIRE(m[0] == "full");
         REQUIRE((m[1] == "111" && m[2] == "222"));
-        REQUIRE(m[10] == "");
+        REQUIRE(m[10].empty());
     }
     SECTION("Iterator works") {
         size_t count = 0;

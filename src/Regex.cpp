@@ -1,5 +1,4 @@
 #include "Regex.h"
-#include <iostream>
 
 bool Regex::findPath(const State* s, const std::string& text, size_t pos, size_t& endPos, Match& m, std::map<std::string, size_t>& starts) {
 
@@ -82,7 +81,6 @@ void Regex::findAll(const std::string& text, std::vector<Match> &output) {
         size_t endPos = i;
         std::map<std::string, size_t> tempStarts;
         if (findPath(nfa.start, text, i, endPos, m, tempStarts)) {
-            std::cout << "Found at " << i << ", length " << (endPos - i) << ", group x = " << m.groups["x"] << std::endl;
             if (endPos > i) {
                 m.value = text.substr(i, endPos - i);
                 output.push_back(m);

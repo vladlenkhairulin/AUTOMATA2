@@ -10,7 +10,7 @@ std::vector<Token> RegexParser::tokenize(const std::string& regex) {
         if (c == '&') {
             if (i+1 < regex.size()) {
                 char next = regex[i+1];
-                if (next == '|' || next=='+' || next=='?' || next=='.' || next=='(' || next==')') {
+                if (next == '|' || next=='+' || next=='?' || next=='.' || next=='(' || next==')' || next=='{' || next =='}' || next == '&') {
                     tokens.emplace_back(TokenType::SYMBOL, std::string(1, next));
                     i++;
                     continue;

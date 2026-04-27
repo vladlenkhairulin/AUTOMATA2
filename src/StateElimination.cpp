@@ -1,5 +1,4 @@
 #include "StateElimination.h"
-
 #include <memory>
 
 std::string StateElimination::opOr(const std::string &a, const std::string &b) {
