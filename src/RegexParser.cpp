@@ -121,7 +121,7 @@ int RegexParser::precedence(TokenType type) {
     if (type == TokenType::OR) return 1;
     if (type == TokenType::CONCAT) return 2;
     if (type == TokenType::PLUS || type == TokenType::OPTION) return 3;
-    if (type == TokenType::REPEAT) return 4;
+    if (type == TokenType::REPEAT || type == TokenType::GRP) return 4;
     return 0;
 }
 
@@ -132,7 +132,7 @@ std::vector<Token> RegexParser::parse(const std::string& regex) {
     std::stack<Token> operations;
 
     for (const auto& token: tokens) {
-        if (token.type == TokenType::SYMBOL || token.type == TokenType::DOT) res.push_back(token);
+        if (token.type == TokenType::SYMBOL || token.type == TokenType::DOT || token.type == TokenType::GRPREF) res.push_back(token);
         else if (token.type == TokenType::LPAR) operations.push(token);
         else if (token.type == TokenType::RPAR) {
             while (!operations.empty() && operations.top().type != TokenType::LPAR) {

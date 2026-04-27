@@ -10,6 +10,7 @@ struct State {
     std::map<char, std::vector<State*>> transitions;
     std::string startTag = "";
     std::string endTag = "";
+    std::string refTag = "";
 };
 
 struct NFA {

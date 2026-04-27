@@ -139,6 +139,13 @@ NFA Thompson::buildRec(Node* node) {
         rec.end->transitions['$'].push_back(s2);
         return {s1, s2};
     }
+    if (node->token.type == TokenType::GRPREF) {
+        State* s1 = newState();
+        State* s2 = newState();
+        s1->refTag = node->token.value;
+        s1->transitions['$'].push_back(s2);
+        return {s1, s2};
+    }
     return {};
 }
 

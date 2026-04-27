@@ -7,9 +7,9 @@
 struct Match {
     std::string value;
     std::map<std::string, std::string> groups;
-    std::string operator[](const std::string& name) {
+    /*std::string operator[](const std::string& name) {
         return groups.contains(name) ? groups[name] : "";
-    }
+    }*/
 
     std::string operator[](size_t index) const {
         if (index == 0) return value;
