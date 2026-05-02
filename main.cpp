@@ -82,7 +82,7 @@ int main() {
                   << "3: NFA (НКА по Томсону)\n" << "4: DFA (Обычный ДКА)\n" << "5: Minimized DFA (Минимизация)\n"
                   << "6: FindAll (Поиск и группы)\n" << "7: FindAll (Без доступа к группам)\n"
                   << "8: Complement (Дополнение)\n" << "9: Reverse (Реверс)\n"
-                  << "10: State Elimination (В регулярку)\n" << "0: Exit\n";
+                  << "10: State Elimination (В регулярку)\n" << "11: Equivalence\n" << "0: Exit\n";
         if (!(std::cin >> choice) || choice == 0) break;
         std::cout << "Enter regex: ";
         std::cin >> regex;
@@ -169,6 +169,23 @@ int main() {
                 DFA minDfa = db.minimize(db.convert(th.build(regex)));
                 StateElimination elim;
                 std::cout << "Recovered Regex: " << elim.toRegex(minDfa) << "\n";
+                break;
+            }
+            case 11: {
+                std::string regex2;
+                std::cout << "Enter second regex: ";
+                std::cin >> regex2;
+                NFA nfa1 = th.build(regex);
+                DFA dfa1 = db.convert(nfa1);
+                NFA nfa2 = th.build(regex2);
+
+
+
+                DFA dfa2 = db.convert(nfa2);
+                if (db.equivalence(dfa1, dfa2)) {
+                    std::cout << "Языки эквивалентны\n" ;
+                }
+                else std::cout << "Языки неэквивалентны\n";
                 break;
             }
             default:

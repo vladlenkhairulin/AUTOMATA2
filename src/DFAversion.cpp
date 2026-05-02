@@ -62,6 +62,7 @@ std::set<char> DFAversion::getAlphabet(const NFA& nfa) {
 
 DFA DFAversion::convert(const NFA& nfa) {
     DFA dfa;
+    if (!nfa.start || !nfa.end) return dfa;
     int idCounter = 0;
     std::map<std::set<State*>, DFAState*> map;
     std::queue<std::set<State*>> q;
@@ -89,7 +90,7 @@ DFA DFAversion::convert(const NFA& nfa) {
             std::set<State*> moved = move(curSet, c);
             if (moved.empty()) continue;
             std::set<State*> closure = epsilonClosure(moved);
-            if (!map.count(closure)) {
+            if (!map.contains(closure)) {
                 DFAState* newState = new DFAState{};
                 newState->id = idCounter++;
                 newState->nfaStates = closure;
@@ -291,4 +292,47 @@ DFA DFAversion::reverse(const DFA& oldDFA) {
     nfa.end  = newEnd;
     const DFA inversion = convert(nfa);
     return minimize(inversion);
+}
+
+bool DFAversion::equivalence(const DFA& dfa1, const DFA& dfa2) {
+    if (!dfa1.start || !dfa2.start) {
+        return dfa1.start == dfa2.start;
+    }
+    std::queue<std::pair<DFAState*, DFAState*>> mulpair;
+    std::set<std::pair<int, int>> visited;
+    mulpair.emplace(dfa1.start, dfa2.start);
+    visited.insert({dfa1.start->id, dfa2.start->id});
+    while (!mulpair.empty()) {
+        auto [q, r] = mulpair.front();
+        mulpair.pop();
+        bool qFinal = (q != nullptr) && q->isFinal;
+        bool rFinal = (r != nullptr) && r->isFinal;
+        if (qFinal != rFinal) {
+            return false;
+        }
+        std::set<char> alphabet;
+        if (q) {
+            for (auto const& pair : q->transitions) {
+                alphabet.insert(pair.first);
+            }
+        }
+        if (r) {
+            for (auto const& pair : r->transitions) {
+                alphabet.insert(pair.first);
+            }
+        }
+        for (char c : alphabet) {
+            DFAState* nextQ = (q && q->transitions.contains(c)) ? q->transitions.at(c) : nullptr;
+            DFAState* nextR = (r && r->transitions.contains(c)) ? r->transitions.at(c) : nullptr;
+            int idQ = nextQ ? nextQ->id : -1;
+            int idR = nextR ? nextR->id : -1;
+            if (!visited.contains({idQ, idR})) {
+                visited.insert({idQ, idR});
+                if (nextQ || nextR) {
+                    mulpair.emplace(nextQ, nextR);
+                }
+            }
+        }
+    }
+    return true;
 }

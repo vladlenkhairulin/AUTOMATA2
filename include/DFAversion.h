@@ -33,5 +33,6 @@ public:
     DFA compile(const std::string& regex);
     DFA complement(const DFA& oldDFA);
     DFA reverse(const DFA& oldDFA);
+    bool equivalence(const DFA& dfa1, const DFA& dfa2);
 };
 #endif //AUTOMATA2_DFA_H

@@ -24,10 +24,16 @@ NFA Thompson::build(const std::string& regex) {
     SyntaxTree tree;
     auto postfix = parser.parse(regex);
     Node* root = tree.build(postfix);
+    if (root == nullptr) {
+        return {nullptr, nullptr};
+    }
     return buildRec(root);
 }
 
 NFA Thompson::buildRec(Node* node) {
+    if (node == nullptr) {
+        return {nullptr, nullptr};
+    }
     if (node->token.type == TokenType::SYMBOL) {
         State* s1 = newState();
         State* s2 = newState();

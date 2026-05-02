@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "catch2/catch_amalgamated.hpp"
 
 #include "../include/Regex.h"
@@ -19,6 +21,18 @@ static size_t finalsCount(const DFA& dfa) {
     size_t c = 0;
     for (auto* s : dfa.states) if (s->isFinal) c++;
     return c;
+}
+
+
+static bool match(const DFA& dfa, const std::string& word) {
+    if (!dfa.start) return false;
+    DFAState* cur = dfa.start;
+    for (char c : word) {
+        auto it = cur->transitions.find(c);
+        if (it == cur->transitions.end()) return false;
+        cur = it->second;
+    }
+    return cur->isFinal;
 }
 
 TEST_CASE("RegexParser: tokenize/parse/metacharacters") {
@@ -270,9 +284,32 @@ TEST_CASE("DFAversion: reverse language") {
     }
 }
 
-TEST_CASE("Regex findAll") {
+TEST_CASE("DFAversion: equivalence of languages") {
+    DFAversion dv;
+    SECTION("Equivalent regexes") {
+        DFA dfa1 = dv.compile("a|b");
+        DFA dfa2 = dv.compile("(a|b)");
+        REQUIRE(dv.equivalence(dfa1, dfa2));
+    }
+    SECTION("Equivalent regexes2") {
+        DFA dfa1 = dv.compile("(a|b)+");
+        DFA dfa2 = dv.compile("(a|b)(a|b)?{0,}");
+        REQUIRE(dv.equivalence(dfa1, dfa2));
+    }
+    SECTION("Non-equivalent regexes") {
+        DFA dfa1 = dv.compile("ab+");
+        DFA dfa2 = dv.compile("ab");
+        REQUIRE_FALSE(dv.equivalence(dfa1, dfa2));
+    }
+    SECTION("Equivalence of empty languages") {
+        DFA empty1{};
+        DFA empty2 = dv.compile("");
+        REQUIRE(dv.equivalence(empty1, empty2));
+    }
+}
 
-    SECTION("Simple literal matching string overload") {
+TEST_CASE("Regex findAll") {
+    SECTION("Simple string") {
         Regex re("ab");
         auto v = re.findAll("zzabyyab");
         REQUIRE(v.size() == 2);
@@ -280,11 +317,10 @@ TEST_CASE("Regex findAll") {
         REQUIRE(v[1] == "ab");
     }
 
-    SECTION("Object overload with captures") {
+    SECTION("Overload with captures") {
         Regex re("(<x>ab)");
         std::vector<Match> out;
         re.findAll("zzabyy", out);
-
         REQUIRE(out.size() == 1);
         REQUIRE(out[0].value == "ab");
         REQUIRE(out[0].groups["x"] == "ab");
@@ -337,6 +373,21 @@ TEST_CASE("Regex findAll") {
     }
 }
 
+
+TEST_CASE("Regex findAll: empty string") {
+    SECTION("Empty text findAll") {
+        Regex re("a");
+        auto v = re.findAll("");
+        REQUIRE(v.empty());
+    }
+    SECTION("Empty text simple findAll") {
+        Regex re("ab");
+        std::vector<Match> out;
+        re.findAll("", out);
+        REQUIRE(out.empty());
+    }
+}
+
 TEST_CASE("Match object: iterator and index operator") {
     Match m;
     m.value = "full";
@@ -379,5 +430,71 @@ TEST_CASE("Named group reference GRPREF") {
         auto v = re.findAll("xxababjjda");
         REQUIRE(v.size() == 1);
         REQUIRE(v[0] == "abab");
+    }
+}
+
+TEST_CASE("DFAVersion: empty complement and reverse") {
+    DFAversion dv;
+    SECTION("Empty reverse") {
+        DFA empty;
+        DFA r = dv.reverse(empty);
+        REQUIRE(r.states.empty());
+        REQUIRE(r.start == nullptr);
+    }
+    SECTION("Empty complement") {
+        DFA empty;
+        DFA c = dv.complement(empty);
+        REQUIRE(c.states.empty());
+        REQUIRE(c.start == nullptr);
+    }
+}
+
+TEST_CASE("DFAversion: GRPREF without group") {
+    DFAversion dv;
+    SECTION("GRPREF turns into automaton with 0 transitions and 1 state") {
+        DFA dfa = dv.compile("<x>");
+        REQUIRE(dfa.start != nullptr);
+        REQUIRE(dfa.states.size() == 1);
+        REQUIRE(dfa.start->isFinal);
+        REQUIRE(dfa.start->transitions.empty());
+    }
+}
+
+TEST_CASE("Empty complement") {
+    SECTION("Empty") {
+        DFAversion dv;
+        DFA dfa = dv.compile("");
+        DFA com = dv.complement(dfa);
+        REQUIRE(com.states.empty());
+        REQUIRE(com.start == nullptr);
+        StateElimination se;
+    }
+    SECTION("Test reverse") {
+        DFAversion dv;
+        DFA dfa = dv.compile("((me)+)?p|hi{2,7}");
+        DFA rev = dv.reverse(dfa);
+        REQUIRE(match(rev, "iiih"));
+        REQUIRE(match(rev, "p"));
+        REQUIRE(match(rev, "pem"));
+        REQUIRE(match(rev, "pemem"));
+
+
+        /*Thompson th;
+        StateElimination se;
+        std::string reg = se.toRegex(rev);
+        Regex re(reg);
+        std::vector<std::string> res1 = re.findAll("iiih");
+        std::vector<std::string> res2 = re.findAll("p");
+        std::vector<std::string> res3 = re.findAll("pem");
+        std::vector<std::string> res4 = re.findAll("pemem");
+        std::cout << "\n";
+        REQUIRE(res1.size() == 1);
+        REQUIRE(res1[0] == "iiih");
+        REQUIRE(res2.size() == 1);
+        REQUIRE(res2[0] == "p");
+        REQUIRE(res3.size() == 1);
+        REQUIRE(res3[0] == "pem");
+        REQUIRE(res4.size() == 1);
+        REQUIRE(res4[0] == "pemem");*/
     }
 }

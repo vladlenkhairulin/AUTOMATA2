@@ -5,8 +5,14 @@ std::string StateElimination::opOr(const std::string &a, const std::string &b) {
     if (a.empty()) return b;
     if (b.empty()) return a;
     if (a==b) return a;
-    if (a == "$") return b + "?";
-    if (b == "$") return a + "?";
+    if (a == "$") {
+        if (b.length() == 1)return b + "?";
+        else return "(" + b + ")?";
+    }
+    if (b == "$") {
+        if (a.length() == 1) return a + "?";
+        else return "(" + a + ")?";
+    }
     return "(" + a + "|" + b + ")";
 }
 
