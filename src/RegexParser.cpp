@@ -133,16 +133,23 @@ std::vector<Token> RegexParser::parse(const std::string& regex) {
 
     for (const auto& token: tokens) {
         if (token.type == TokenType::SYMBOL || token.type == TokenType::DOT || token.type == TokenType::GRPREF) res.push_back(token);
-        else if (token.type == TokenType::LPAR) operations.push(token);
+        else if (token.type == TokenType::LPAR || token.type == TokenType::GRP) operations.push(token);
         else if (token.type == TokenType::RPAR) {
-            while (!operations.empty() && operations.top().type != TokenType::LPAR) {
+            while (!operations.empty() && operations.top().type != TokenType::LPAR && operations.top().type != TokenType::GRP) {
                 res.push_back(operations.top());
                 operations.pop();
             }
-            if (!operations.empty()) operations.pop();
+            if (!operations.empty() && operations.top().type == TokenType::LPAR) {
+                operations.pop();
+            }
+            else if (!operations.empty() && operations.top().type == TokenType::GRP) {
+                Token groupToken = operations.top();
+                operations.pop();
+                res.push_back(groupToken);
+            }
         }
         else {
-            while (!operations.empty() && precedence(operations.top().type) >= precedence(token.type)) {
+            while (!operations.empty() &&  operations.top().type != TokenType::LPAR && operations.top().type != TokenType::GRP && precedence(operations.top().type) >= precedence(token.type)) {
                 res.push_back(operations.top());
                 operations.pop();
             }

@@ -270,10 +270,10 @@ TEST_CASE("DFAversion: reverse language") {
         std::string restored = se.toRegex(rev);
         REQUIRE_FALSE(restored.empty());
         Regex re(restored);
-        auto ok = re.findAll("xxbazz");
+        auto ok = re.findAll(restored, "xxbazz");
         REQUIRE(ok.size() == 1);
         REQUIRE(ok[0] == "ba");
-        auto bad = re.findAll("xxabzz");
+        auto bad = re.findAll(restored, "xxabzz");
         REQUIRE(bad.empty());
     }
 
@@ -308,86 +308,6 @@ TEST_CASE("DFAversion: equivalence of languages") {
     }
 }
 
-TEST_CASE("Regex findAll") {
-    SECTION("Simple string") {
-        Regex re("ab");
-        auto v = re.findAll("zzabyyab");
-        REQUIRE(v.size() == 2);
-        REQUIRE(v[0] == "ab");
-        REQUIRE(v[1] == "ab");
-    }
-
-    SECTION("Overload with captures") {
-        Regex re("(<x>ab)");
-        std::vector<Match> out;
-        re.findAll("zzabyy", out);
-        REQUIRE(out.size() == 1);
-        REQUIRE(out[0].value == "ab");
-        REQUIRE(out[0].groups["x"] == "ab");
-        REQUIRE(out[0][0] == "ab");
-        REQUIRE(out[0][1] == "ab");
-        REQUIRE(out[0][2] == "");
-    }
-
-    SECTION("Optional operator") {
-        Regex re("ab?c");
-        auto v = re.findAll("abc ac");
-        REQUIRE(v.size() == 2);
-    }
-
-    SECTION("Plus operator") {
-        Regex re("a+");
-        auto v = re.findAll("xaaxaxaaax");
-        REQUIRE(v.size() >= 2);
-        for (const auto& match : v) {
-            REQUIRE_FALSE(match.empty());
-            for (char ch : match) {
-                REQUIRE(ch == 'a');
-            }
-        }
-    }
-    SECTION("Dot") {
-        Regex re("a.c");
-        auto v = re.findAll("abc axc a-c");
-        REQUIRE(v.size() == 3);
-    }
-    SECTION("Repeat range") {
-        Regex re("a{2,3}");
-        auto v = re.findAll("aaaa a aaa aa");
-        REQUIRE(v.size() >= 1);
-        REQUIRE(v[0].length() >= 2);
-        REQUIRE(v[0].length() <= 3);
-    }
-    SECTION("metacharacters") {
-        Regex re("&|");
-        auto v = re.findAll("a|b||");
-        REQUIRE(v.size() == 3);
-        REQUIRE(v[0] == "|");
-        REQUIRE(v[1] == "|");
-        REQUIRE(v[2] == "|");
-    }
-    SECTION("No matches") {
-        Regex re("xyz");
-        auto v = re.findAll("aaaa");
-        REQUIRE(v.empty());
-    }
-}
-
-
-TEST_CASE("Regex findAll: empty string") {
-    SECTION("Empty text findAll") {
-        Regex re("a");
-        auto v = re.findAll("");
-        REQUIRE(v.empty());
-    }
-    SECTION("Empty text simple findAll") {
-        Regex re("ab");
-        std::vector<Match> out;
-        re.findAll("", out);
-        REQUIRE(out.empty());
-    }
-}
-
 TEST_CASE("Match object: iterator and index operator") {
     Match m;
     m.value = "full";
@@ -395,7 +315,7 @@ TEST_CASE("Match object: iterator and index operator") {
     m.groups["b"] = "222";
 
     SECTION("Numeric index") {
-        REQUIRE(m[0] == "full");
+        REQUIRE(m[static_cast<size_t>(0)] == "full");
         REQUIRE((m[1] == "111" && m[2] == "222"));
         REQUIRE(m[10].empty());
     }
@@ -421,15 +341,6 @@ TEST_CASE("StateElimination") {
     SECTION("Empty DFA returns empty regex") {
         DFA empty;
         REQUIRE(se.toRegex(empty).empty());
-    }
-}
-
-TEST_CASE("Named group reference GRPREF") {
-    SECTION("Same captured text must repeat") {
-        Regex re("(<x>ab)<x>");
-        auto v = re.findAll("xxababjjda");
-        REQUIRE(v.size() == 1);
-        REQUIRE(v[0] == "abab");
     }
 }
 
@@ -478,7 +389,6 @@ TEST_CASE("Empty complement") {
         REQUIRE(match(rev, "pem"));
         REQUIRE(match(rev, "pemem"));
 
-
         /*Thompson th;
         StateElimination se;
         std::string reg = se.toRegex(rev);
@@ -496,5 +406,202 @@ TEST_CASE("Empty complement") {
         REQUIRE(res3[0] == "pem");
         REQUIRE(res4.size() == 1);
         REQUIRE(res4[0] == "pemem");*/
+    }
+}
+
+TEST_CASE("Named group reference GRPREF") {
+    SECTION("Captured group") {
+        auto v = Regex::findAll("(<x>ab)<x>", "xxababjjda");
+        REQUIRE(v.size() == 1);
+        REQUIRE(v[0] == "abab");
+    }
+
+    SECTION("Match keeps captured group") {
+        std::vector<Match> out;
+        Regex::findAll("(<x>ab)<x>", "xxababjjda", out);
+        REQUIRE(out.size() == 1);
+        REQUIRE(out[0].value == "abab");
+        REQUIRE(out[0]["x"] == "ab");
+    }
+
+    SECTION("Captured group not in the text") {
+        auto v = Regex::findAll("(<x>ab)<x>", "xxabacjjda");
+        REQUIRE(v.empty());
+    }
+}
+
+TEST_CASE("Regex findAll") {
+    SECTION("Simple string") {
+        auto v = Regex::findAll("ab", "zzabyyab");
+        REQUIRE(v.size() == 2);
+        REQUIRE(v[0] == "ab");
+        REQUIRE(v[1] == "ab");
+    }
+
+    SECTION("Overload with captures") {
+        std::vector<Match> out;
+        Regex::findAll("(<x>ab)", "zzabyy", out);
+        REQUIRE(out.size() == 1);
+        REQUIRE(out[0].value == "ab");
+        REQUIRE(out[0]["x"] == "ab");
+        REQUIRE(out[0][static_cast<size_t>(0)] == "ab");
+        REQUIRE(out[0][static_cast<size_t>(1)] == "ab");
+        REQUIRE(out[0][static_cast<size_t>(2)].empty());
+    }
+
+    SECTION("Optional operator") {
+        auto v = Regex::findAll("ab?c", "abc ac");
+        REQUIRE(v.size() == 2);
+    }
+    SECTION("Plus operator") {
+        auto v = Regex::findAll("a+", "xaaxaxaaax");
+        for (const auto& match : v) {
+            REQUIRE_FALSE(match.empty());
+            for (char ch : match) {
+                REQUIRE(ch == 'a');
+            }
+        }
+    }
+    SECTION("Dot") {
+        auto v = Regex::findAll("a.c", "abc axc a-c");
+        REQUIRE(v.size() == 3);
+    }
+    SECTION("Repeat range") {
+        auto v = Regex::findAll("a{2,3}", "aaaa a aaa aa");
+        REQUIRE(v.size() >= 1);
+        REQUIRE(v[0].length() >= 2);
+        REQUIRE(v[0].length() <= 3);
+    }
+
+    SECTION("metacharacters") {
+        auto v = Regex::findAll("&|", "a|b||");
+        REQUIRE(v.size() == 3);
+        REQUIRE(v[0] == "|");
+        REQUIRE(v[1] == "|");
+        REQUIRE(v[2] == "|");
+    }
+    SECTION("No matches") {
+        auto v = Regex::findAll("xyz", "aaaa");
+        REQUIRE(v.empty());
+    }
+}
+
+TEST_CASE("Regex findAll: empty") {
+    SECTION("Empty text") {
+        auto v = Regex::findAll("a", "");
+        REQUIRE(v.empty());
+    }
+    SECTION("Empty text with Match") {
+        std::vector<Match> out;
+        Regex::findAll("ab", "", out);
+        REQUIRE(out.empty());
+    }
+
+    SECTION("Empty regex") {
+        auto v = Regex::findAll("", "abc");
+        REQUIRE(v.empty());
+    }
+
+    SECTION("Empty regex with Match") {
+        std::vector<Match> out;
+        Regex::findAll("", "abc", out);
+        REQUIRE(out.empty());
+    }
+    SECTION("a? does not add any matches") {
+        auto v = Regex::findAll("a?", "bbb");
+        REQUIRE(v.empty());
+    }
+}
+
+TEST_CASE("DFAversion: dfaFindAll") {
+    DFAversion dv;
+    SECTION("Non-overlapping matches") {
+        auto v = dv.dfaFindAll("ab", "zzabyyab");
+        REQUIRE(v.size() == 2);
+        REQUIRE(v[0] == "ab");
+        REQUIRE(v[1] == "ab");
+    }
+    SECTION("Overlapping matches") {
+        auto v = dv.dfaFindAll("abab", "zababab");
+        REQUIRE(v.size() == 1);
+        REQUIRE(v[0] == "abab");
+    }
+    SECTION("Empty text") {
+        auto v = dv.dfaFindAll("ab", "");
+        REQUIRE(v.empty());
+    }
+    SECTION("Empty regex") {
+        auto v = dv.dfaFindAll("", "abc");
+        REQUIRE(v.empty());
+    }
+    SECTION("Match keeps captured group") {
+        std::vector<Match> out;
+        Regex::findAll("(<x>(a+)?)<x>", "", out);
+        REQUIRE(!out.empty());
+    }
+    SECTION("Match keeps captured group") {
+        std::vector<Match> out;
+        Regex::findAll("(<x>(a+)?)<x>", "aa", out);
+        REQUIRE(!out.empty());
+        REQUIRE(out[0][0] == "aa");
+        REQUIRE(out[0]["x"] == "a");
+    }
+    SECTION("Match keeps captured group") {
+        std::vector<Match> out;
+        Regex::findAll("(<x>(a+)?)(<y>(a+)?)<x><y>", "aa", out);
+        REQUIRE(!out.empty());
+        REQUIRE(out[0][0] == "aa");
+        REQUIRE(out[0]["x"] == "a");
+        REQUIRE(out[0].groups.contains("y"));
+        REQUIRE(out[0].groups["y"].empty());
+        // res: aa, y = empty
+    }
+    SECTION("Match keeps captured group") {
+        std::vector<Match> out;
+        Regex::findAll("(<x>(a+)?)(<y>(a+)?)<x><y>", "aaaa", out);
+        REQUIRE(!out.empty());
+        REQUIRE(out[0][0] == "aaaa");
+        REQUIRE(out[0]["x"] == "aa");
+        REQUIRE(out[0].groups.contains("y"));
+        REQUIRE(out[0].groups["y"].empty());
+        // res: aa 2 по a, y = empty
+    }
+    SECTION("Match keeps captured group") {
+        std::vector<Match> out;
+        Regex::findAll("(<x>(a+)?)(<y>(a+)?)<x>b<y>", "aaaba", out);
+        REQUIRE(!out.empty());
+        REQUIRE(out[0][0] == "aaaba");
+        REQUIRE(out[0]["x"] == "a");
+        REQUIRE(out[0]["y"] == "a");
+        // x:a, y:a passed
+    }
+    SECTION("Match keeps captured group") {
+        std::vector<Match> out;
+        Regex::findAll("(<x>(a+)?)(<y>(a+)?)<x>b<y>", "aba", out);
+        REQUIRE(!out.empty());
+        REQUIRE(out[0][0] == "aba");
+        REQUIRE(out[0]["x"].empty());
+        REQUIRE(out[0].groups.contains("y"));
+        REQUIRE(out[0].groups["y"] == "a");
+        // x:empty, y:a passed
+    }
+    SECTION("Match keeps captured group") {
+        std::vector<Match> out;
+        Regex::findAll("(<x>(a+)?)(<y>(a+)?)<x>b<y>", "aaaaaba", out);
+        REQUIRE(!out.empty());
+        REQUIRE(out[0][0] == "aaaaaba");
+        REQUIRE(out[0]["x"] == "aa");
+        REQUIRE(out[0]["y"] == "a");
+        // x:aa, y:a passed
+    }
+    SECTION("Match keeps captured group") {
+        std::vector<Match> out;
+        Regex::findAll("(<x>(a+)?)(<y>(a+)?)<x>b<y>", "aaaabaa", out);
+        REQUIRE(!out.empty());
+        REQUIRE(out[0][0] == "aaaab");
+        REQUIRE(out[0]["x"] == "aa");
+        REQUIRE(out[0]["y"] == "");
+        // x:a, y:aa passed
+        // x:aa, y:empty
     }
 }

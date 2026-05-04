@@ -82,7 +82,8 @@ int main() {
                   << "3: NFA (НКА по Томсону)\n" << "4: DFA (Обычный ДКА)\n" << "5: Minimized DFA (Минимизация)\n"
                   << "6: FindAll (Поиск и группы)\n" << "7: FindAll (Без доступа к группам)\n"
                   << "8: Complement (Дополнение)\n" << "9: Reverse (Реверс)\n"
-                  << "10: State Elimination (В регулярку)\n" << "11: Equivalence\n" << "0: Exit\n";
+                  << "10: State Elimination (В регулярку)\n" << "11: Equivalence\n"
+                  << "12: dfaFindAll\n" << "0: Exit\n";
         if (!(std::cin >> choice) || choice == 0) break;
         std::cout << "Enter regex: ";
         std::cin >> regex;
@@ -125,9 +126,8 @@ int main() {
                 std::cin.ignore();
                 std::cout << "Enter line:\n";
                 std::getline(std::cin, text);
-                Regex re(regex);
                 std::vector<Match> matches;
-                re.findAll(text, matches);
+                Regex::findAll(regex, text, matches);
                 if (matches.empty()) std::cout << "No matches found.\n";
                 for (auto& m : matches) {
                     std::cout << "Match: '" << m.value << "'\n";
@@ -140,8 +140,7 @@ int main() {
                 std::cin.ignore();
                 std::cout << "Enter line:\n";
                 std::getline(std::cin, text);
-                Regex re(regex);
-                std::vector<std::string> results = re.findAll(text);
+                std::vector<std::string> results = Regex::findAll(regex, text);
                 if (results.empty()) {
                     std::cout << "No matches found.\n";
                 }
@@ -178,14 +177,27 @@ int main() {
                 NFA nfa1 = th.build(regex);
                 DFA dfa1 = db.convert(nfa1);
                 NFA nfa2 = th.build(regex2);
-
-
-
                 DFA dfa2 = db.convert(nfa2);
                 if (db.equivalence(dfa1, dfa2)) {
                     std::cout << "Языки эквивалентны\n" ;
                 }
                 else std::cout << "Языки неэквивалентны\n";
+                break;
+            }
+            case 12: {
+                std::cin.ignore();
+                std::cout << "Enter line:\n";
+                std::getline(std::cin, text);
+                std::vector<std::string> results = db.dfaFindAll(regex, text);
+                if (results.empty()) {
+                    std::cout << "No matches found.\n";
+                }
+                else {
+                    std::cout << "Found substrings by DFA:\n";
+                    for (const std::string& s : results) {
+                        std::cout << s << "\n";
+                    }
+                }
                 break;
             }
             default:

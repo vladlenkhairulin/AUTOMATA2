@@ -1,98 +1,140 @@
 #include "Regex.h"
 
-bool Regex::findPath(const State* s, const std::string& text, size_t pos, size_t& endPos, Match& m, std::map<std::string, size_t>& starts) {
+void Regex::saveStartedGroups(PathStruct& args) {
+    const std::string& text = *args.text;
+    for (const auto& [grpName, startPos] : args.starts) {
+        if (!args.match.groups.contains(grpName)) {
+            args.match[grpName] = text.substr(startPos, args.pos - startPos);
+        }
+    }
+}
 
-    if (!s->refTag.empty()) {
-        for (const auto& [name, startPos] : starts) {
-            if (!m.groups.contains(name)) {
-                m.groups[name] = text.substr(startPos, pos - startPos);
-            }
-        }
-        if (!m.groups.contains(s->refTag)) return false;
-        const std::string& inner = m.groups[s->refTag];
-        if (pos + inner.size() > text.size()) return false;
-        for (size_t i = 0; i < inner.size(); ++i) {
-            if (text[pos + i] != inner[i]) return false;
-        }
-        size_t newPos = pos + inner.size();
-        if (s == nfa.end) {
-            endPos = newPos;
-            return true;
-        }
-        if (s->transitions.contains('$')) {
-            for (const State* next : s->transitions.at('$')) {
-                if (findPath(next, text, newPos, endPos, m, starts))
-                    return true;
-            }
-        }
-        return false;
+bool Regex::tryRefTag(const State* s, Regex::PathStruct& args) {
+    PathStruct ctxt = args;
+    saveStartedGroups(ctxt);
+    if (!args.match.groups.contains(s->refTag)) return false;
+    const std::string& text = *ctxt.text;
+    const std::string& captured = ctxt.match[s->refTag];
+    if (ctxt.pos + captured.size() > text.size()) return false;
+    for (size_t i = 0; i<captured.size(); ++i) {
+        if (text[ctxt.pos+i] != captured[i]) return false;
     }
-    if (!s->startTag.empty()) {
-        starts[s->startTag] = pos;
-    }
+    ctxt.pos += captured.size();
     if (s == nfa.end) {
-        endPos = pos;
-        for (const auto& [name, startPos] : starts) {
-            if (!m.groups.contains(name)) {
-                m.groups[name] = text.substr(startPos, pos - startPos);
-            }
-        }
+        ctxt.endPos = ctxt.pos;
+        args = ctxt;
         return true;
     }
-    bool success = false;
-    if (pos < text.size()) {
-        if (s->transitions.contains(text[pos])) {
-            for (const State* next : s->transitions.at(text[pos])) {
-                if (findPath(next, text, pos + 1, endPos, m, starts))
-                    return true;
-            }
-        }
-        if (s->transitions.contains('.')) {
-            for (const State* next : s->transitions.at('.')) {
-                if (findPath(next, text, pos + 1, endPos, m, starts))
-                    return true;
-            }
+    if (!s->transitions.contains('$')) return false;
+    for (const State* next : s->transitions.at('$')) {
+        PathStruct nextArgs = ctxt;
+        if (findPath(next, nextArgs)) {
+            args = nextArgs;
+            return true;
         }
     }
-
-    if (s->transitions.contains('$')) {
-        for (const State* next : s->transitions.at('$')) {
-            if (findPath(next, text, pos, endPos, m, starts))
-                success = true;
-        }
-    }
-    if (!s->endTag.empty() && starts.contains(s->endTag) && !m.groups.contains(s->endTag)) {
-        m.groups[s->endTag] = text.substr(starts[s->endTag], pos - starts[s->endTag]);
-        if (s->transitions.contains('$')) {
-            for (const State* next : s->transitions.at('$')) {
-                if (findPath(next, text, pos, endPos, m, starts))
-                    success = true;
-            }
-        }
-    }
-    return success;
+    return false;
 }
 
-void Regex::findAll(const std::string& text, std::vector<Match> &output) {
+bool Regex::tryCharTransitions(const State* s, PathStruct& args) {
+    const std::string& text = *args.text;
+    if (args.pos >= text.size()) return false;
+    char cur = text[args.pos];
+    if (!s->transitions.contains(cur)) return false;
+    for (const State* next : s->transitions.at(cur)) {
+        PathStruct nextArgs = args;
+        nextArgs.pos++;
+        if (findPath(next, nextArgs)) {
+            args = nextArgs;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Regex::tryDotTransitions(const State* s, PathStruct& args) {
+const std::string& text = *args.text;
+    if (args.pos >= text.size()) return false;
+    if (!s->transitions.contains('.')) return false;
+    for (const State* next : s->transitions.at('.')) {
+        PathStruct nextArgs = args;
+        nextArgs.pos++;
+        if (findPath(next, nextArgs)){
+            args = nextArgs;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool Regex::tryEpsilonTransitions(const State* s, PathStruct& args) {
+    if (!s->transitions.contains('$')) return false;
+    for (const State* next : s->transitions.at('$')) {
+        PathStruct nextArgs = args;
+        if (findPath(next, nextArgs)) {
+            args = nextArgs;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Regex::tryEndTag(const State* s, PathStruct& args) {
+    if (s->endTag.empty()) return false;
+    if (!args.starts.contains(s->endTag)) return false;
+    if (!args.match.groups.contains(s->endTag)) {
+        size_t startPos = args.starts[s->endTag];
+        args.match[s->endTag] = args.text->substr(startPos, args.pos - startPos);
+    }
+    return tryEpsilonTransitions(s, args);
+}
+
+bool Regex::findPath(const State* s, PathStruct& args) {
+    if (!s) return false;
+    if (!s->refTag.empty()) return tryRefTag(s, args);
+    if (!s->startTag.empty()) {
+        args.starts[s->startTag] = args.pos;
+    }
+    if (!s->endTag.empty() && args.starts.contains(s->endTag)) {
+        const std::string& text = *args.text;
+        size_t startPos = args.starts[s->endTag];
+        args.match[s->endTag] = text.substr(startPos, args.pos-startPos);
+    }
+    if (s == nfa.end){
+        args.endPos = args.pos;
+        saveStartedGroups(args);
+        return true;
+    }
+
+    if (tryCharTransitions(s, args)) return true;
+    if (tryDotTransitions(s, args)) return true;
+    if (tryEpsilonTransitions(s, args)) return true;
+    return false;
+}
+
+void Regex::findAll(const std::string& regex, const std::string& text, std::vector<Match>& output) {
     output.clear();
-    if (!nfa.start) return;
-    for (size_t i = 0; i < text.size(); i++) {
-        Match m;
-        size_t endPos = i;
-        std::map<std::string, size_t> tempStarts;
-        if (findPath(nfa.start, text, i, endPos, m, tempStarts)) {
-            if (endPos > i) {
-                m.value = text.substr(i, endPos - i);
-                output.push_back(m);
-                i = endPos - 1;
-            }
-        }
+    Regex re(regex);
+    if (!re.nfa.start) return;
+    for (size_t i = 0; i <= text.size(); ++i) {
+        PathStruct ctxt;
+        ctxt.text = &text;
+        ctxt.pos = i;
+        ctxt.endPos = i;
+        if (!re.findPath(re.nfa.start, ctxt)) continue;
+        if (ctxt.endPos < i) continue;
+        if (ctxt.endPos == i && !text.empty()) continue;
+        ctxt.match.value = text.substr(i, ctxt.endPos-i);
+        output.push_back(ctxt.match);
+        if (ctxt.endPos == i) break;
+        i = ctxt.endPos - 1;
     }
 }
 
-std::vector<std::string> Regex::findAll(const std::string &text) {
+std::vector<std::string> Regex::findAll(const std::string& regex, const std::string &text) {
     std::vector<Match> matches;
-    findAll(text, matches);
+    findAll(regex, text, matches);
     std::vector<std::string> results;
     for (const Match &m : matches) {
         results.push_back(m.value);

@@ -34,5 +34,6 @@ public:
     DFA complement(const DFA& oldDFA);
     DFA reverse(const DFA& oldDFA);
     bool equivalence(const DFA& dfa1, const DFA& dfa2);
+    std::vector<std::string> dfaFindAll(const std::string& regex, const std::string& text);
 };
 #endif //AUTOMATA2_DFA_H

@@ -336,3 +336,25 @@ bool DFAversion::equivalence(const DFA& dfa1, const DFA& dfa2) {
     }
     return true;
 }
+
+std::vector<std::string> DFAversion::dfaFindAll(const std::string& regex, const std::string& text) {
+    std::vector<std::string> res;
+    DFA dfa = compile(regex);
+    if (!dfa.start) return res;
+    for (size_t start = 0; start < text.size(); ++start) {
+        DFAState* cur = dfa.start;
+        size_t furthestEnd = start;
+        for (size_t pos = start; pos<text.size(); ++pos) {
+            char c = text[pos];
+            auto it = cur->transitions.find(c);
+            if (it == cur->transitions.end()) break;
+            cur = it->second;
+            if (cur->isFinal) furthestEnd = pos+1;
+        }
+        if (furthestEnd > start) {
+            res.push_back(text.substr(start, furthestEnd - start));
+            start = furthestEnd - 1;
+        }
+    }
+    return res;
+}

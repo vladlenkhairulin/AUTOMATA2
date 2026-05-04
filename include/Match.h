@@ -7,15 +7,31 @@
 struct Match {
     std::string value;
     std::map<std::string, std::string> groups;
-    /*std::string operator[](const std::string& name) {
-        return groups.contains(name) ? groups[name] : "";
-    }*/
+    std::string& operator[](const std::string& name) {
+        return groups[name];
+    }
+    const std::string& operator[](const std::string& name) const {
+        static const std::string empty = "";
+        auto it = groups.find(name);
+        if (it == groups.end()) {
+            return empty;
+        }
+        return it->second;
+    }
+
+    std::string operator[](size_t index) {
+        if (index == 0) return value;
+        if (index > groups.size()) return "";
+        auto it = groups.begin();
+        std::advance(it, index-1);
+        return it->second;
+    }
 
     std::string operator[](size_t index) const {
         if (index == 0) return value;
         if (index > groups.size()) return "";
         auto it = groups.begin();
-        std::advance(it, index-1);
+        std::advance(it, index - 1);
         return it->second;
     }
 
