@@ -12,6 +12,7 @@ private:
     NFA buildStar(Node* node);
 public:
     NFA build(const std::string& regex);
+    Node* cloneAst(Node* node);
 };
 
 

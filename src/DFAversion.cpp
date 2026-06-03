@@ -273,7 +273,6 @@ DFA DFAversion::reverse(const DFA& oldDFA) {
         for (auto const& pair : src->transitions) {
             if (pair.second) {
                 mapping[pair.second]->transitions[pair.first].push_back(mapping[src]);
-
             }
         }
     }

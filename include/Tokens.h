@@ -15,7 +15,9 @@ enum class TokenType
     RPAR,
     REPEAT,
     GRP,
-    GRPREF
+    GRPREF,
+    KLEENE,
+    DOUBLE
 };
 
 struct Token

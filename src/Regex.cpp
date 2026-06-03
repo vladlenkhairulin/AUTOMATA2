@@ -12,7 +12,7 @@ void Regex::saveStartedGroups(PathStruct& args) {
 bool Regex::tryRefTag(const State* s, Regex::PathStruct& args) {
     PathStruct ctxt = args;
     saveStartedGroups(ctxt);
-    if (!args.match.groups.contains(s->refTag)) return false;
+    if (!ctxt.match.groups.contains(s->refTag)) return false;
     const std::string& text = *ctxt.text;
     const std::string& captured = ctxt.match[s->refTag];
     if (ctxt.pos + captured.size() > text.size()) return false;

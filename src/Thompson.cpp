@@ -81,8 +81,17 @@ NFA Thompson::buildRec(Node* node) {
         newStart->transitions['$'].push_back(nfa.start);
         newStart->transitions['$'].push_back(newEnd);
         nfa.end->transitions['$'].push_back(newEnd);
-
         return {newStart, newEnd};
+    }
+    if (node->token.type == TokenType::KLEENE) {
+        return buildStar(node->left);
+    }
+    if (node->token.type == TokenType::DOUBLE) {
+        NFA nfa = buildRec(node->left);
+        Node* clone = cloneAst(node->left);
+        NFA clonedNFA = buildRec(clone);
+        nfa.end->transitions['$'].push_back(clonedNFA.start);
+        return {nfa.start, clonedNFA.end};
     }
     if (node->token.type == TokenType::REPEAT) {
         std::string v = node->token.value;
@@ -153,6 +162,14 @@ NFA Thompson::buildRec(Node* node) {
         return {s1, s2};
     }
     return {};
+}
+
+Node* Thompson::cloneAst(Node* node) {
+    if (!node) return nullptr;
+    Node* newNode = new Node(node->token);
+    newNode->left = cloneAst(node->left);
+    newNode->right = cloneAst(node->right);
+    return newNode;
 }
 
 

@@ -10,7 +10,7 @@ std::vector<Token> RegexParser::tokenize(const std::string& regex) {
         if (c == '&') {
             if (i+1 < regex.size()) {
                 char next = regex[i+1];
-                if (next == '|' || next=='+' || next=='?' || next=='.' || next=='(' || next==')' || next=='{' || next =='}' || next == '&') {
+                if (next == '|' || next=='+' || next=='?' || next=='.' || next=='(' || next==')' || next=='{' || next =='}' || next == '&' || next == '*' || next == '!') {
                     tokens.emplace_back(TokenType::SYMBOL, std::string(1, next));
                     i++;
                     continue;
@@ -26,6 +26,9 @@ std::vector<Token> RegexParser::tokenize(const std::string& regex) {
             case '+':
                 tokens.emplace_back(TokenType::PLUS);
                 break;
+            case '*':
+                tokens.emplace_back(TokenType::KLEENE);
+                break;
             case '?':
                 tokens.emplace_back(TokenType::OPTION);
                 break;
@@ -34,6 +37,9 @@ std::vector<Token> RegexParser::tokenize(const std::string& regex) {
                 break;
             case '(':
                 tokens.emplace_back(TokenType::LPAR);
+                break;
+            case '!':
+                tokens.emplace_back(TokenType::DOUBLE);
                 break;
             case ')':
                 tokens.emplace_back(TokenType::RPAR);
@@ -107,7 +113,7 @@ void RegexParser::addConcat(std::vector<Token>& tokens) {
             TokenType t1 = tokens[i].type;
             TokenType t2 = tokens[i+1].type;
             if ( (t1 == TokenType::SYMBOL || t1 == TokenType::RPAR || t1 == TokenType::DOT || t1==TokenType::PLUS
-                || t1==TokenType::OPTION || t1 == TokenType::REPEAT || t1 == TokenType::GRPREF)
+                || t1==TokenType::OPTION || t1 == TokenType::REPEAT || t1 == TokenType::GRPREF || t1 == TokenType::KLEENE || t1 == TokenType::DOUBLE)
                 && (t2==TokenType::SYMBOL || t2==TokenType::LPAR || t2 == TokenType::DOT
                 || t2 == TokenType::GRP || t2 == TokenType::GRPREF) ) {
                     res.emplace_back(TokenType::CONCAT);
@@ -120,7 +126,7 @@ void RegexParser::addConcat(std::vector<Token>& tokens) {
 int RegexParser::precedence(TokenType type) {
     if (type == TokenType::OR) return 1;
     if (type == TokenType::CONCAT) return 2;
-    if (type == TokenType::PLUS || type == TokenType::OPTION) return 3;
+    if (type == TokenType::PLUS || type == TokenType::OPTION || type == TokenType::KLEENE || type == TokenType::DOUBLE) return 3;
     if (type == TokenType::REPEAT || type == TokenType::GRP) return 4;
     return 0;
 }

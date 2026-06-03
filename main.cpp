@@ -94,7 +94,13 @@ int main() {
                 RegexParser p;
                 auto pf = p.parse(regex);
                 std::cout << "Postfix: ";
-                for (auto& t : pf) std::cout << static_cast<int>(t.type) << " ";
+                for (auto& t : pf) {
+                    std::cout << static_cast<int>(t.type);
+                    if (!t.value.empty()) {
+                        std::cout << "(" << t.value << ")";
+                    }
+                    std::cout << " ";
+                }
                 std::cout << "\n";
                 break;
             }

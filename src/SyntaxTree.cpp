@@ -7,7 +7,7 @@ Node* SyntaxTree::build(const std::vector<Token>& postfix) {
         if (token.type == TokenType::SYMBOL || token.type == TokenType::DOT || token.type == TokenType::GRPREF) {
             st.push(new Node(token));
         }
-        else if (token.type == TokenType::PLUS || token.type == TokenType::OPTION || token.type == TokenType::REPEAT || token.type == TokenType::GRP) {
+        else if (token.type == TokenType::PLUS || token.type == TokenType::OPTION || token.type == TokenType::REPEAT || token.type == TokenType::GRP || token.type == TokenType::KLEENE || token.type == TokenType::DOUBLE) {
             if (st.empty()) return nullptr;
             Node* node = new Node(token);
             node->left = st.top();

@@ -336,7 +336,7 @@ TEST_CASE("StateElimination") {
         std::string restored = se.toRegex(dfa1);
         REQUIRE_FALSE(restored.empty());
         auto dfa2 = dv.compile(restored);
-        REQUIRE(finalsCount(dfa2) == finalsCount(dfa1));
+        REQUIRE(finalsCount(dfa1) == finalsCount(dfa2));
     }
     SECTION("Empty DFA returns empty regex") {
         DFA empty;
@@ -502,6 +502,11 @@ TEST_CASE("Regex findAll: empty") {
         REQUIRE(v.empty());
     }
 
+    SECTION("Empty regex") {
+        auto v = Regex::findAll("$", "");
+        REQUIRE(!v.empty());
+    }
+
     SECTION("Empty regex with Match") {
         std::vector<Match> out;
         Regex::findAll("", "abc", out);
@@ -603,5 +608,71 @@ TEST_CASE("DFAversion: dfaFindAll") {
         REQUIRE(out[0]["y"] == "");
         // x:a, y:aa passed
         // x:aa, y:empty
+    }
+}
+
+TEST_CASE("Kleene star operator") {
+    DFAversion dv;
+    Thompson th;
+    SECTION("1") {
+        NFA nfa = th.build("a*");
+        REQUIRE(nfa.start != nullptr);
+        REQUIRE(nfa.end != nullptr);
+    }
+    SECTION("2") {
+        DFA dfa = dv.compile("a*");
+        REQUIRE(dfa.start != nullptr);
+        REQUIRE(match(dfa, ""));
+        REQUIRE(match(dfa, "a"));
+        REQUIRE(match(dfa, "aaaa"));
+        REQUIRE_FALSE(match(dfa, "b"));
+        REQUIRE_FALSE(match(dfa, "aaab"));
+    }
+    SECTION("3") {
+        DFA dfa = dv.compile("(ab)*");
+        REQUIRE(match(dfa, ""));
+        REQUIRE(match(dfa, "ab"));
+        REQUIRE(match(dfa, "abab"));
+        REQUIRE_FALSE(match(dfa, "a"));
+        REQUIRE_FALSE(match(dfa, "aba"));
+    }
+    SECTION("4") {
+        std::vector<std::string> v = Regex::findAll("a*b", "b ab aaab aaa");
+        REQUIRE(v.size() == 3);
+        REQUIRE(v[0] == "b");
+        REQUIRE(v[1] == "ab");
+        REQUIRE(v[2] == "aaab");
+    }
+}
+
+TEST_CASE("DOUBLE operation") {
+    DFAversion dv;
+    SECTION("my tests") {
+        DFA dfa = dv.compile("a!");
+        REQUIRE(match(dfa, "aa"));
+        REQUIRE_FALSE(match(dfa, ""));
+        DFA dfa2 = dv.compile("(ab)!");
+        REQUIRE(match(dfa2, "abab"));
+        REQUIRE_FALSE(match(dfa2, "ab"));
+    }
+    SECTION("tests1") {
+        std::string regex1 = "m!e*!|(ph)!*|i!!!";
+        DFA dfa1 = dv.compile(regex1);
+        REQUIRE(match(dfa1, ""));
+        REQUIRE(match(dfa1, "mmeeeeee"));
+        REQUIRE(match(dfa1, "mm"));
+        REQUIRE(match(dfa1, "phphphph"));
+        REQUIRE(match(dfa1, "phph"));
+        REQUIRE(match(dfa1, "iiiiiiii"));
+        REQUIRE_FALSE(match(dfa1, "phphph"));
+        REQUIRE_FALSE(match(dfa1, "iiiiii"));
+    }
+    SECTION("tests2") {
+        std::string regex2 = "(m!e*!|(ph)!*|i!!!)!";
+        DFA dfa2 = dv.compile(regex2);
+        REQUIRE(match(dfa2, "phphmm"));
+        REQUIRE(match(dfa2, "mmeeeemm"));
+        REQUIRE(match(dfa2, "mmiiiiiiii"));
+        REQUIRE(match(dfa2, "mm"));
     }
 }
